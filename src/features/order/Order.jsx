@@ -1,0 +1,94 @@
+// Test ID: IIDSAT
+import { useFetcher, useLoaderData } from 'react-router-dom';
+import {
+  calcMinutesLeft,
+  formatCurrency,
+  formatDate,
+} from '../../utilities/helpers';
+import { getOrder } from '../../services/apiRestaurant';
+import OrderItem from './OrderItem';
+import { useEffect } from 'react';
+
+function Order() {
+  const order = useLoaderData();
+
+  const fetcher = useFetcher();
+
+  useEffect(() => {
+    if (!fetcher.data && fetcher.state === 'idle') {
+      fetcher.load('/menu');
+    }
+  }, [fetcher]);
+
+  const {
+    id,
+    status,
+    priority,
+    priorityPrice,
+    orderPrice,
+    estimatedDelivery,
+    cart,
+  } = order;
+  const deliveryIn = calcMinutesLeft(estimatedDelivery);
+
+  return (
+    <div className="space-y-8 px-4 py-6">
+      <div className="flex flex-wrap items-center justify-between">
+        <h2>order #{id} Status</h2>
+
+        <div className="space-x-2">
+          {priority && (
+            <span className="rounded-full bg-red-400 px-3 py-1 text-sm font-semibold uppercase text-red-50">
+              Priority
+            </span>
+          )}
+          <span className="rounded-full bg-green-400 px-3 py-1 text-sm font-semibold uppercase text-green-50">
+            {status} order
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-y-2  bg-stone-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          {deliveryIn >= 0
+            ? `Only ${calcMinutesLeft(estimatedDelivery)} minutes left 😃`
+            : 'Order should have arrived'}
+        </p>
+        <p>(Estimated delivery: {formatDate(estimatedDelivery)})</p>
+      </div>
+
+      <ul className="divide-y border-b border-t">
+        {cart.map((item) => (
+          <OrderItem
+            item={item}
+            key={item.pizzaId}
+            ingredients={
+              fetcher?.data?.find((el) => el.id === item.pizzaId).ingredients
+            }
+          />
+        ))}
+      </ul>
+
+      <div className="space-y-2 bg-stone-200 px-6 py-5">
+        <p className="text-sm font-medium text-stone-600">
+          Price pizza: {formatCurrency(orderPrice)}
+        </p>
+        {priority && (
+          <p className="text-sm font-medium text-stone-600">
+            Price priority: {formatCurrency(priorityPrice)}
+          </p>
+        )}
+        <p className="font-bold">
+          To pay on delivery: {formatCurrency(orderPrice + priorityPrice)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export async function loader({ params }) {
+  const data = await getOrder(params.orderId);
+  return data;
+}
+
+export default Order;
